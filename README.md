@@ -1,6 +1,6 @@
 ### Resfinder output compiler
 
-This script is used to parse the output of the Resfinder tool. Optimized for the serial deployment deployment of resfinder across many samples. Output is compiled into 4 files:
+This script is used to parse the output of the Resfinder tool. Optimized for the serial deployment of resfinder across multiple samples. Output is compiled into 4 files:
 
 - isolate_summaries.tsv
 - pointfinder_summaries.tsv
