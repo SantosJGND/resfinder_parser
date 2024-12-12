@@ -35,7 +35,7 @@ class ResfinderParser:
         if self.has_data:
             self.passport = self.collect_summary()
         else:
-            self.passport = self.empty_passport()
+            self.passport = self.empty_passport
 
         self.phenotypes = IsolatePhenotypes(
             self.isolate_id, self.passport.result_summary
@@ -52,7 +52,9 @@ class ResfinderParser:
             self.phenotypes.add_phenotype(antibiotic)
 
     @staticmethod
-    def resfinder_json_summary(content):
+    def resfinder_json_summary(content) -> IsolateSummary:
+        """
+        Parse the resfinder json output into a IsolateSummary object."""
         analysis_key = content["key"]
         provided_species = content["provided_species"]
         result_summary = content["result_summary"]
@@ -67,6 +69,7 @@ class ResfinderParser:
         )
         return IsolateSummary(analysis_key, provided_species, result_summary, databases)
 
+    @property
     def empty_passport(self):
         return IsolateSummary("", "", "No results found.", "")
 
@@ -121,6 +124,7 @@ class ResfinderParser:
         return seq_reg_df
 
     def extend_resfinder_results(self, resfinder_df):
+
         seq_reg_df = self.seq_regions_parse()
 
         def contig_id_info(phenotype: pd.DataFrame):
