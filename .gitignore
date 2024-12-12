@@ -1,0 +1,11 @@
+## python
+.venv
+
+## dev
+.vscode
+.git
+
+## local
+tmp/
+
+
