@@ -10,6 +10,6 @@ This script is used to parse the output of the Resfinder tool. Optimized for the
 Resfinder is a tool for the identification ARGs in NGS-data.
 The tool is locally installable and available as an online service.
 
-- Resfinder Publication (link)[https://pmc.ncbi.nlm.nih.gov/articles/PMC8914360/]
-- Online tool : (link)[http://genepi.food.dtu.dk/resfinder]
-- Resfinder GitHub : (link)[https://github.com/genomicepidemiology/resfinder]
+- Resfinder Publication [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8914360/)
+- Online tool : [link](http://genepi.food.dtu.dk/resfinder)
+- Resfinder GitHub : [link](https://github.com/genomicepidemiology/resfinder)
