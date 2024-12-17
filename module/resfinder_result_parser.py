@@ -242,26 +242,39 @@ class ResfinderCollector:
         if pointfinder_results.empty:
             return None
 
-        # pointfinder_known = pointfinder_results[
-        #    pointfinder_results["Resistance"] != "Unknown"
-        # ]
+        isolate_ids = pointfinder_results["isolate_id"].unique()
+
+        pointfinder_known = pointfinder_results[
+            pointfinder_results["Resistance"] != "Unknown"
+        ]
 
         groups = []
-        for _, group in pointfinder_results.groupby("isolate_id"):
-            ## merge rows with the same mutation, but different resistance. concatenate the resistance
-            group = group.groupby(["isolate_id", "Mutation"]).agg(
-                {"Resistance": lambda x: "; ".join(x)}
-            )
-            group = group.reset_index()
+        # for _, group in pointfinder_results.groupby("isolate_id"):
+        for isolate_id in isolate_ids:
+            group = pointfinder_results[pointfinder_results["isolate_id"] == isolate_id]
 
-            matrix_df = group.pivot(
-                index="isolate_id", columns="Mutation", values="Resistance"
-            )
+            if group.empty is False:
+                ## merge rows with the same mutation, but different resistance. concatenate the resistance
+                group = group.groupby(["isolate_id", "Mutation"]).agg(
+                    {"Resistance": lambda x: "; ".join(x)}
+                )
+                group = group.reset_index()
 
-            matrix_df = matrix_df.fillna("")
-            matrix_df = matrix_df.reset_index()
+                matrix_df = group.pivot(
+                    index="isolate_id", columns="Mutation", values="Resistance"
+                )
 
-            groups.append(matrix_df)
+                matrix_df = matrix_df.fillna("")
+                matrix_df = matrix_df.reset_index()
+
+                groups.append(matrix_df)
+            else:
+                groups.append(
+                    pd.DataFrame(
+                        [[isolate_id] + [""] * (len(group.columns) - 1)],
+                        columns=group.columns,
+                    )
+                )
 
         matrix_df = pd.concat(groups, axis=0)
 
