@@ -1,6 +1,6 @@
 ## python
 .venv
-
+*__pycache__*
 ## dev
 .vscode
 .git
