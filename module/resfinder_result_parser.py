@@ -251,7 +251,7 @@ class ResfinderCollector:
         groups = []
         # for _, group in pointfinder_results.groupby("isolate_id"):
         for isolate_id in isolate_ids:
-            group = pointfinder_results[pointfinder_results["isolate_id"] == isolate_id]
+            group = pointfinder_known[pointfinder_known["isolate_id"] == isolate_id]
 
             if group.empty is False:
                 ## merge rows with the same mutation, but different resistance. concatenate the resistance
