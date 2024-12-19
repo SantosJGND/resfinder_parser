@@ -253,28 +253,20 @@ class ResfinderCollector:
         for isolate_id in isolate_ids:
             group = pointfinder_known[pointfinder_known["isolate_id"] == isolate_id]
 
-            if group.empty is False:
-                ## merge rows with the same mutation, but different resistance. concatenate the resistance
-                group = group.groupby(["isolate_id", "Mutation"]).agg(
-                    {"Resistance": lambda x: "; ".join(x)}
-                )
-                group = group.reset_index()
+            ## merge rows with the same mutation, but different resistance. concatenate the resistance
+            group = group.groupby(["isolate_id", "Mutation"]).agg(
+                {"Resistance": lambda x: "; ".join(x)}
+            )
+            group = group.reset_index()
 
-                matrix_df = group.pivot(
-                    index="isolate_id", columns="Mutation", values="Resistance"
-                )
+            matrix_df = group.pivot(
+                index="isolate_id", columns="Mutation", values="Resistance"
+            )
 
-                matrix_df = matrix_df.fillna("")
-                matrix_df = matrix_df.reset_index()
+            matrix_df = matrix_df.fillna("")
+            matrix_df = matrix_df.reset_index()
 
-                groups.append(matrix_df)
-            else:
-                groups.append(
-                    pd.DataFrame(
-                        [[isolate_id] + [""] * (len(group.columns) - 1)],
-                        columns=group.columns,
-                    )
-                )
+            groups.append(matrix_df)
 
         matrix_df = pd.concat(groups, axis=0)
 
@@ -320,6 +312,8 @@ class ResfinderCollector:
             return None, None, None, None
 
         pointfinder_results = pd.concat(pointfinder_results, axis=0)
+        isolate_ids = pointfinder_results["isolate_id"].unique()
+
         resfinder_results = pd.concat(resfinder_results, axis=0)
         isolate_summaries = pd.concat(isolate_summaries, axis=0)
 
@@ -331,6 +325,7 @@ class ResfinderCollector:
             genes_affected,
             pointfinder_results_summary,
             on="isolate_id",
+            how="outer",
         )
 
         return (
