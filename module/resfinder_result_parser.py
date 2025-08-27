@@ -6,127 +6,14 @@ import datetime
 import logging
 from dataclasses import dataclass
 from typing import List, Dict
-
-
-@dataclass
-class IsolateSummary:
-    key: str
-    provided_species: str
-    result_summary: str
-    databases: str
-
-
-class SeqRegion:
-    def __init__(self, seq_region_output: str):
-        seq_region_output = seq_region_output.split(";;")
-
-        self.gene = seq_region_output[0].strip()
-        self.version = seq_region_output[1].strip()
-        self.homolog = seq_region_output[2].strip()
-
-    def __str__(self):
-        return f"{self.gene};;{self.version};;{self.homolog}"
-
-    def __repr__(self):
-        return str(self)
-
-
-class Phenotype:
-    phenotype_fields = [
-        "amr_classes",
-        "amr_resistant",
-        "amr_species_relevant",
-        "grade",
-        "seq_regions",
-    ]
-
-    def __init__(self, name):
-        self.name = name
-        self.seq_regions: List[SeqRegion] = []
-
-    def add_seq_region(self, seq_region: str):
-        self.seq_regions.append(SeqRegion(seq_region))
-
-    def add_regions(self, regions: List[str]):
-        for region in regions:
-            self.add_seq_region(region)
-
-    def feed_data(self, data: dict):
-        for field in self.phenotype_fields:
-            found = data.get(field, None)
-            if found is not None:
-                if isinstance(found, list):
-                    if field == "seq_regions":
-                        self.add_regions(found)
-                        continue
-                    found = ";".join(found)
-
-            setattr(self, field, str(found))
-
-
-class IsolatePhenotypes:
-    def __init__(self, isolate_id: str, result_summary: str):
-        self.isolate_id = isolate_id
-        self.result_summary = result_summary
-        self.phenotypes: Dict[str, Phenotype] = {}
-        self.all_genes_affected: Dict[str, list] = {}
-
-    def add_phenotype(self, phenotype: Phenotype):
-        self.phenotypes[phenotype.name] = phenotype
-
-    def phenotype_dataframe(self):
-        data_keep = []
-        for phenotype_name, phenotype in self.phenotypes.items():
-            phenotype_data = [phenotype_name]
-            for field in phenotype.phenotype_fields:
-                found = getattr(phenotype, field, None)
-                if found is not None:
-                    if isinstance(found, list):
-                        if len(found) == 0:
-                            found = "0"
-                        else:
-                            found = ";".join([str(x) for x in found])
-
-                phenotype_data.append(str(found))
-
-            data_keep.append(phenotype_data)
-
-        df = pd.DataFrame(
-            data_keep, columns=["antibiotic"] + phenotype.phenotype_fields
-        )
-
-        return df
-
-    def collect_all_genes_affected(self):
-        for phenotype_name, phenotype in self.phenotypes.items():
-            for seq_region in phenotype.seq_regions:
-                if seq_region.gene not in self.all_genes_affected.keys():
-                    self.all_genes_affected[seq_region.gene] = [phenotype_name]
-                else:
-                    if phenotype_name not in self.all_genes_affected[seq_region.gene]:
-                        self.all_genes_affected[seq_region.gene].append(phenotype_name)
-
-    def all_genes(self):
-        genes = []
-        for phenotype_name, phenotype in self.phenotypes.items():
-            for seq_region in phenotype.seq_regions:
-                genes.append(seq_region.gene)
-
-        return genes
-
-    def gene_affected(self, gene: str):
-        gene_present = self.all_genes_affected.get(gene, None)
-
-        if gene_present is None:
-            return ""
-        else:
-            return "; ".join(gene_present)
+from module.data_classes import IsolatePhenotypes, Phenotype, IsolateSummary
 
 
 class ResfinderParser:
     pointfinder_results_filename: str = "PointFinder_results.txt"
     resfinder_results_filename = "ResFinder_results_tab.txt"
     resfinder_results_suffix = ".json"
+    databases_to_exclude = []
 
     def __init__(self, RESFINDER_dir, isolate_dir):
         self.isolate_id = isolate_dir
@@ -142,20 +29,22 @@ class ResfinderParser:
 
         self.time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        self.has_data = os.path.isfile(
-            self.pointfinder_results_filepath
-        ) and os.path.isfile(self.resfinder_results_filepath)
+        self.has_data = os.path.isfile(self.resfinder_results_filepath)
+        self.has_pointfinder_data = (
+            os.path.isfile(self.pointfinder_results_filepath)
+            and os.path.getsize(self.pointfinder_results_filepath) > 0
+        )
 
         if self.has_data:
             self.passport = self.collect_summary()
         else:
-            self.passport = self.empty_passport()
+            self.passport = self.empty_passport
 
         self.phenotypes = IsolatePhenotypes(
             self.isolate_id, self.passport.result_summary
         )
 
-    def resfinder_json_parse_antibiotics(self):
+    def json_parse_antibiotics(self):
         """Parse the resfinder json output into a pandas dataframe."""
         content = self.read_json()
         ## info to get:
@@ -165,22 +54,23 @@ class ResfinderParser:
             antibiotic.feed_data(data)
             self.phenotypes.add_phenotype(antibiotic)
 
-    @staticmethod
-    def resfinder_json_summary(content):
+    def resfinder_json_summary(self, content) -> IsolateSummary:
+        """
+        Parse the resfinder json output into a IsolateSummary object."""
         analysis_key = content["key"]
         provided_species = content["provided_species"]
         result_summary = content["result_summary"]
         databases: dict = content["databases"]
-        databases_to_keep = ["resfinder", "pointfinder"]
         databases = "; ".join(
             [
                 f"{v['database_name']}-{v['database_version']}"
                 for k, v in databases.items()
-                if v["database_name"].lower() in databases_to_keep
+                if v["database_name"].lower() not in self.databases_to_exclude
             ]
         )
         return IsolateSummary(analysis_key, provided_species, result_summary, databases)
 
+    @property
     def empty_passport(self):
         return IsolateSummary("", "", "No results found.", "")
 
@@ -213,8 +103,8 @@ class ResfinderParser:
 
         return results
 
-    def collect_resfinder_results(self):
-        self.resfinder_json_parse_antibiotics()
+    def collect_phenotype_results(self):
+        self.json_parse_antibiotics()
         isolate_results = self.phenotypes.phenotype_dataframe()
         isolate_results = self.add_analyis_columns(isolate_results)
 
@@ -225,6 +115,13 @@ class ResfinderParser:
 
         seq_reg = []
         for reg, map in results["seq_regions"].items():
+
+            ## filter out if all databases are in the exclude list
+            databases = map["ref_database"]
+            databases_simple = [x.split("-")[0].lower() for x in databases]
+            if all(db in self.databases_to_exclude for db in databases_simple):
+                continue
+
             for phenotype in map["phenotypes"]:
                 seq_reg.append([reg, phenotype, map["query_id"], map["identity"]])
 
@@ -235,6 +132,7 @@ class ResfinderParser:
         return seq_reg_df
 
     def extend_resfinder_results(self, resfinder_df):
+
         seq_reg_df = self.seq_regions_parse()
 
         def contig_id_info(phenotype: pd.DataFrame):
@@ -352,12 +250,17 @@ class ResfinderCollector:
         if pointfinder_results.empty:
             return None
 
-        # pointfinder_known = pointfinder_results[
-        #    pointfinder_results["Resistance"] != "Unknown"
-        # ]
+        isolate_ids = pointfinder_results["isolate_id"].unique()
+
+        pointfinder_known = pointfinder_results[
+            pointfinder_results["Resistance"] != "Unknown"
+        ]
 
         groups = []
-        for _, group in pointfinder_results.groupby("isolate_id"):
+        # for _, group in pointfinder_results.groupby("isolate_id"):
+        for isolate_id in isolate_ids:
+            group = pointfinder_known[pointfinder_known["isolate_id"] == isolate_id]
+
             ## merge rows with the same mutation, but different resistance. concatenate the resistance
             group = group.groupby(["isolate_id", "Mutation"]).agg(
                 {"Resistance": lambda x: "; ".join(x)}
@@ -401,34 +304,45 @@ class ResfinderCollector:
 
                 continue
 
-            isolate_pointfinder_results = isolate_parser.collect_pointfinder_results()
-            isolate_resfinder_results = isolate_parser.collect_resfinder_results()
-            isolate_resfinder_results = isolate_parser.extend_resfinder_results(
-                isolate_resfinder_results
+            isolate_phenotype_results = isolate_parser.collect_phenotype_results()
+            isolate_phenotype_results = isolate_parser.extend_resfinder_results(
+                isolate_phenotype_results
             )
             isolate_summary = isolate_parser.isolate_summary()
 
-            pointfinder_results.append(isolate_pointfinder_results)
-            resfinder_results.append(isolate_resfinder_results)
+            if isolate_parser.has_pointfinder_data:
+
+                isolate_pointfinder_results = (
+                    isolate_parser.collect_pointfinder_results()
+                )
+                pointfinder_results.append(isolate_pointfinder_results)
+
+            resfinder_results.append(isolate_phenotype_results)
             isolate_summaries.append(isolate_summary)
             isolate_phenotypes.append(isolate_parser.phenotypes)
 
         if len(isolate_phenotypes) == 0:
             return None, None, None, None
 
-        pointfinder_results = pd.concat(pointfinder_results, axis=0)
         resfinder_results = pd.concat(resfinder_results, axis=0)
         isolate_summaries = pd.concat(isolate_summaries, axis=0)
 
         genes_affected = self.genes_affected(isolate_phenotypes)
+        combinbined_presence_absence = genes_affected.copy()
 
-        pointfinder_results_summary = self.pointfinder_summary(pointfinder_results)
+        if len(pointfinder_results) > 0:
+            pointfinder_results = pd.concat(pointfinder_results, axis=0)
 
-        combinbined_presence_absence = pd.merge(
-            genes_affected,
-            pointfinder_results_summary,
-            on="isolate_id",
-        )
+            pointfinder_results_summary = self.pointfinder_summary(pointfinder_results)
+
+            combinbined_presence_absence = pd.merge(
+                genes_affected,
+                pointfinder_results_summary,
+                on="isolate_id",
+                how="outer",
+            )
+        else:
+            pointfinder_results = pd.DataFrame()
 
         return (
             pointfinder_results,
@@ -480,25 +394,3 @@ class ResfinderCollector:
         )
 
         self.logger.info(f"Results written to {self.output_dir}")
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-r",
-        "--resfinder_dir",
-        help="Path to the directory containing the resfinder results.",
-        required=True,
-    )
-    parser.add_argument(
-        "-o",
-        "--output_dir",
-        help="Path to the directory to write the results to.",
-        required=False,
-    )
-    args = parser.parse_args()
-
-    collector = ResfinderCollector(args.resfinder_dir, args.output_dir)
-    collector.collect()
