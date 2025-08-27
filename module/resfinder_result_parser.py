@@ -115,6 +115,8 @@ class ResfinderParser:
 
         seq_reg = []
         for reg, map in results["seq_regions"].items():
+
+            ## filter out if all databases are in the exclude list
             databases = map["ref_database"]
             databases_simple = [x.split("-")[0].lower() for x in databases]
             if all(db in self.databases_to_exclude for db in databases_simple):
