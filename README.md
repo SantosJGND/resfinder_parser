@@ -13,3 +13,8 @@ The tool is locally installable and available as an online service.
 - Resfinder Publication [link](https://pmc.ncbi.nlm.nih.gov/articles/PMC8914360/)
 - Online tool : [link](http://genepi.food.dtu.dk/resfinder)
 - Resfinder GitHub : [link](https://github.com/genomicepidemiology/resfinder)
+
+### Requirements
+
+- Python 3
+- pandas
