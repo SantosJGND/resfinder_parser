@@ -17,6 +17,9 @@ class ResfinderParser:
 
     def __init__(self, RESFINDER_dir, isolate_dir):
         self.isolate_id = isolate_dir
+        
+        if os.path.isdir(os.path.join(RESFINDER_dir, isolate_dir, "resfinder_results")):
+            isolate_dir = os.path.join(isolate_dir, "resfinder_results")
 
         self.pointfinder_results_filepath = os.path.join(
             RESFINDER_dir, isolate_dir, self.pointfinder_results_filename
@@ -286,7 +289,7 @@ class ResfinderCollector:
         isolate_summaries = []
         isolate_phenotypes = []
 
-        for isolate_dir in os.listdir(self.RESFINDER_dir):
+        for isolate_dir in self.isolate_dirs:
             if isolate_dir.startswith("."):
                 continue
 
