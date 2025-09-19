@@ -24,11 +24,21 @@ class ResfinderParser:
         self.pointfinder_results_filepath = os.path.join(
             RESFINDER_dir, isolate_dir, self.pointfinder_results_filename
         )
+
+        json_files = [
+            f
+            for f in os.listdir(os.path.join(RESFINDER_dir, isolate_dir))
+            if f.endswith(self.resfinder_results_suffix)
+        ]
+
         self.resfinder_results_filepath = os.path.join(
-            RESFINDER_dir,
-            isolate_dir,
-            f"{self.isolate_id}{self.resfinder_results_suffix}",
+            RESFINDER_dir, isolate_dir, json_files[0]
         )
+
+        if len(json_files) > 1:
+            logging.warning(
+                f"Multiple resfinder json files found for isolate {self.isolate_id}. Using {json_files[0]}"
+            )
 
         self.time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
