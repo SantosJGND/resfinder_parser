@@ -31,13 +31,11 @@ class ResfinderParser:
             if f.endswith(self.resfinder_results_suffix)
         ]
 
-
-
         if len(json_files) == 0:
             logging.error(
                 f"No resfinder json files found for isolate {self.isolate_id}."
             )
-            return
+            
 
         if len(json_files) > 1:
             logging.warning(
@@ -175,6 +173,9 @@ class ResfinderParser:
         return resfinder_df
 
     def isolate_summary(self):
+        """
+        Provide an overview of the isolate's results.
+        """
         summary_df = pd.DataFrame(
             [
                 [
