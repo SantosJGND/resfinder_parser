@@ -31,14 +31,22 @@ class ResfinderParser:
             if f.endswith(self.resfinder_results_suffix)
         ]
 
-        self.resfinder_results_filepath = os.path.join(
-            RESFINDER_dir, isolate_dir, json_files[0]
-        )
+
+
+        if len(json_files) == 0:
+            logging.error(
+                f"No resfinder json files found for isolate {self.isolate_id}."
+            )
+            return
 
         if len(json_files) > 1:
             logging.warning(
                 f"Multiple resfinder json files found for isolate {self.isolate_id}. Using {json_files[0]}"
             )
+        
+        self.resfinder_results_filepath = os.path.join(
+            RESFINDER_dir, isolate_dir, json_files[0]
+        )
 
         self.time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
