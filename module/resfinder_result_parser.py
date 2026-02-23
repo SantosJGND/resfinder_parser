@@ -42,22 +42,28 @@ class ResfinderParser:
                 f"Multiple resfinder json files found for isolate {self.isolate_id}. Using {json_files[0]}"
             )
         
-        self.resfinder_results_filepath = os.path.join(
-            RESFINDER_dir, isolate_dir, json_files[0]
-        )
+
 
         self.time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        self.has_data = os.path.isfile(self.resfinder_results_filepath)
+        #self.has_data = os.path.isfile(self.resfinder_results_filepath)
+        self.has_data = len(json_files) > 0
+
+        if self.has_data:
+            self.passport = self.collect_summary()
+            self.resfinder_results_filepath = os.path.join(
+                RESFINDER_dir, isolate_dir, json_files[0]
+            )
+
+        else:
+            self.passport = self.empty_passport
+            self.resfinder_results_filepath = ""
+
+
         self.has_pointfinder_data = (
             os.path.isfile(self.pointfinder_results_filepath)
             and os.path.getsize(self.pointfinder_results_filepath) > 0
         )
-
-        if self.has_data:
-            self.passport = self.collect_summary()
-        else:
-            self.passport = self.empty_passport
 
         self.phenotypes = IsolatePhenotypes(
             self.isolate_id, self.passport.result_summary
