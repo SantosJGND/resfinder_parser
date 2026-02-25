@@ -4,8 +4,7 @@ import json
 import os
 import datetime
 import logging
-from dataclasses import dataclass
-from typing import List, Dict
+from typing import List
 from module.data_classes import IsolatePhenotypes, Phenotype, IsolateSummary
 
 
@@ -46,14 +45,13 @@ class ResfinderParser:
 
         self.time_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        #self.has_data = os.path.isfile(self.resfinder_results_filepath)
         self.has_data = len(json_files) > 0
 
         if self.has_data:
-            self.passport = self.collect_summary()
             self.resfinder_results_filepath = os.path.join(
                 RESFINDER_dir, isolate_dir, json_files[0]
             )
+            self.passport = self.collect_summary()
 
         else:
             self.passport = self.empty_passport
